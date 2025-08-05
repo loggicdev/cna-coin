@@ -1,15 +1,21 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/contexts/auth-context"
-import { getAlunos, getTurmas, getTransacoes } from "@/lib/storage"
+import { getAlunos, getTurmas, getTransacoes, saveAlunos } from "@/lib/storage"
 import { getTurmaNome } from "@/lib/mock-data"
-import { Coins, Trophy, Users, History, LogOut } from "lucide-react"
+import { Coins, Trophy, Users, History, LogOut, Menu, User } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 interface Transacao {
   id: string
@@ -33,7 +39,7 @@ interface Turma {
 }
 
 export function AlunoDashboard() {
-  const { user, logout } = useAuth()
+  const { user, logout, login } = useAuth()
   const router = useRouter()
   const [transacoes, setTransacoes] = useState<Transacao[]>([])
   const [ranking, setRanking] = useState<AlunoRanking[]>([])
@@ -41,6 +47,7 @@ export function AlunoDashboard() {
   const [turmaFiltro, setTurmaFiltro] = useState<string>("todas")
   const [turmaNome, setTurmaNome] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   useEffect(() => {
     if (user?.type === "aluno") {
@@ -111,11 +118,40 @@ export function AlunoDashboard() {
     router.push("/")
   }
 
+  const handleEditProfile = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+
+    try {
+      const nome = formData.get("nome") as string
+      const senha = formData.get("senha") as string
+
+      // Update user data in storage
+      const alunos = getAlunos()
+      const alunoIndex = alunos.findIndex((a) => a.id === user!.id)
+      if (alunoIndex !== -1) {
+        alunos[alunoIndex].nome = nome
+        if (senha) {
+          alunos[alunoIndex].senha = senha
+        }
+        saveAlunos(alunos)
+
+        // Update auth context
+        login({ ...user!, nome })
+      }
+
+      setShowEditModal(false)
+      loadData() // Reload data to reflect changes
+    } catch (error) {
+      console.error("Erro ao editar perfil:", error)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Coins className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
+          <Coins className="h-12 w-12 animate-spin mx-auto mb-4 text-red-600" />
           <p>Carregando...</p>
         </div>
       </div>
@@ -129,15 +165,28 @@ export function AlunoDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Coins className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">CNA Coin</h1>
+              <Coins className="h-8 w-8 text-red-600 mr-3" />
+              <h1 className="text-xl font-semibold text-gray-900">CNA COIN</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Olá, {user?.nome}</span>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sair
-              </Button>
+              <div className="hidden md:block text-sm text-gray-600">Olá, {user?.nome}</div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowEditModal(true)}>
+                    <User className="h-4 w-4 mr-2" />
+                    Editar Conta
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -149,10 +198,10 @@ export function AlunoDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Meus CNA Coins</CardTitle>
-              <Coins className="h-4 w-4 text-blue-600" />
+              <Coins className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{user?.saldo_moedas || 0}</div>
+              <div className="text-2xl font-bold text-red-600">{user?.saldo_moedas || 0}</div>
               <p className="text-xs text-muted-foreground">Total de moedas</p>
             </CardContent>
           </Card>
@@ -193,8 +242,8 @@ export function AlunoDashboard() {
                   <CardDescription>Alunos com mais CNA Coins</CardDescription>
                 </div>
                 <Select value={turmaFiltro} onValueChange={setTurmaFiltro}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
+                  <SelectTrigger className="w-48 border-red-200 focus:border-red-500 focus:ring-red-500">
+                    <SelectValue placeholder="Filtrar por turma" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todas">Todas as turmas</SelectItem>
@@ -213,7 +262,7 @@ export function AlunoDashboard() {
                   <div
                     key={aluno.id}
                     className={`flex items-center justify-between p-3 rounded-lg ${
-                      aluno.id === user?.id ? "bg-blue-50 border border-blue-200" : "bg-gray-50"
+                      aluno.id === user?.id ? "bg-red-50 border border-red-200" : "bg-gray-50"
                     }`}
                   >
                     <div className="flex items-center space-x-3">
@@ -241,7 +290,7 @@ export function AlunoDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-blue-600">{aluno.saldo_moedas}</p>
+                      <p className="font-bold text-red-600">{aluno.saldo_moedas}</p>
                       <p className="text-xs text-gray-500">coins</p>
                     </div>
                   </div>
@@ -295,6 +344,28 @@ export function AlunoDashboard() {
           </Card>
         </div>
       </div>
+      {/* Modal para editar perfil */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Perfil</DialogTitle>
+            <DialogDescription>Atualize suas informações pessoais</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditProfile} className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome</Label>
+              <Input id="nome" name="nome" defaultValue={user?.nome} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senha">Nova Senha (opcional)</Label>
+              <Input id="senha" name="senha" type="password" />
+            </div>
+            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
+              Salvar Alterações
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

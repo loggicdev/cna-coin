@@ -58,15 +58,15 @@ export const mockAdmins: Admin[] = [
   {
     id: "admin-1",
     nome: "Admin SP",
-    email: "admin@cnasp.com",
-    senha: "password", // Em produção seria hash
+    email: "@adminsp",
+    senha: "password",
     empresa_id: "550e8400-e29b-41d4-a716-446655440001",
     created_at: "2024-01-01T00:00:00Z",
   },
   {
     id: "admin-2",
     nome: "Admin RJ",
-    email: "admin@cnarj.com",
+    email: "@adminrj",
     senha: "password",
     empresa_id: "550e8400-e29b-41d4-a716-446655440002",
     created_at: "2024-01-01T00:00:00Z",

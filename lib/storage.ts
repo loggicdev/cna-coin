@@ -77,6 +77,17 @@ export function addTurma(turma: Omit<Turma, "id" | "created_at">) {
   return newTurma
 }
 
+export function updateTurma(id: string, updates: Partial<Turma>) {
+  const turmas = getTurmas()
+  const index = turmas.findIndex((t) => t.id === id)
+  if (index !== -1) {
+    turmas[index] = { ...turmas[index], ...updates }
+    saveTurmas(turmas)
+    return turmas[index]
+  }
+  return null
+}
+
 // Funções para gerenciar transações
 export function getTransacoes(): TransacaoMoeda[] {
   initializeStorage()
