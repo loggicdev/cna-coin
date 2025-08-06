@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
-import { loginUser } from "@/lib/auth"
 import { Coins } from "lucide-react"
 
 export function LoginForm() {
@@ -24,26 +23,24 @@ export function LoginForm() {
     setError("")
 
     const formData = new FormData(e.currentTarget)
-    const username = formData.get("username") as string
-    const senha = formData.get("senha") as string
+    const email = formData.get("username") as string
+    const password = formData.get("senha") as string
 
     try {
-      const user = await loginUser(username, senha)
-      if (user) {
-        login(user)
-        if (user.type === "aluno") {
-          router.push("/aluno/dashboard")
-        } else {
-          router.push("/admin/dashboard")
-        }
+      await login(email, password)
+      // Redireciona conforme role
+      const userRole = localStorage.getItem("cna-coin-user") ? JSON.parse(localStorage.getItem("cna-coin-user")!).role : null
+      if (userRole === "student") {
+        router.push("/aluno/dashboard")
+      } else if (userRole === "admin") {
+        router.push("/admin/dashboard")
       } else {
-        setError("Username ou senha inválidos")
+        setError("Role de usuário inválida")
       }
-    } catch (error) {
-      setError("Erro ao fazer login. Tente novamente.")
-    } finally {
-      setIsLoading(false)
+    } catch (err) {
+      setError("Username ou senha inválidos")
     }
+    setIsLoading(false)
   }
 
   return (

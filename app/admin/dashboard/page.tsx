@@ -10,7 +10,7 @@ export default function AdminDashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && (!user || user.type !== "admin")) {
+    if (!isLoading && (!user || user.role !== "admin")) {
       router.push("/")
     }
   }, [user, isLoading, router])
@@ -26,7 +26,7 @@ export default function AdminDashboardPage() {
     )
   }
 
-  if (!user || user.type !== "admin") {
+  if (!user || user.role !== "admin") {
     return null
   }
 

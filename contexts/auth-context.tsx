@@ -2,10 +2,11 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { AuthUser } from "@/lib/auth"
+import { supabase } from "@/lib/supabase"
 
 interface AuthContextType {
   user: AuthUser | null
-  login: (user: AuthUser) => void
+  login: (email: string, password: string) => Promise<void>
   logout: () => void
   isLoading: boolean
 }
@@ -24,9 +25,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const login = (user: AuthUser) => {
-    setUser(user)
-    localStorage.setItem("cna-coin-user", JSON.stringify(user))
+
+  const login = async (email: string, password: string) => {
+    setIsLoading(true)
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error || !data.user) {
+      setIsLoading(false)
+      throw error || new Error("Usuário não encontrado")
+    }
+    // Buscar dados do usuário na tabela user
+    const { data: userData, error: userError } = await supabase
+      .from('user')
+      .select('*')
+      .eq('id', data.user.id)
+      .single()
+    if (userError || !userData) {
+      setIsLoading(false)
+      throw userError || new Error("Dados do usuário não encontrados")
+    }
+    setUser(userData)
+    localStorage.setItem("cna-coin-user", JSON.stringify(userData))
+    setIsLoading(false)
   }
 
   const logout = () => {

@@ -1,5 +1,4 @@
-"use client"
-
+// ...existing code...
 import type React from "react"
 
 import { useState, useEffect } from "react"
@@ -30,6 +29,7 @@ import {
   saveTurmas,
 } from "@/lib/storage"
 import { getTurmaNome } from "@/lib/mock-data"
+import { supabase } from "@/lib/supabase"
 import { Coins, Users, GraduationCap, Plus, LogOut, TrendingUp, Search, Edit, Menu } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -40,7 +40,7 @@ interface Aluno {
   nome: string
   saldo_moedas: number
   turma_id: string | null
-  turma_nome?: string
+  turma_nome?: string | null
 }
 
 interface Turma {
@@ -59,11 +59,38 @@ interface Transacao {
 }
 
 export function AdminDashboard() {
+  const [totalTurmasSupabase, setTotalTurmasSupabase] = useState<number>(0)
+
+  const fetchTotalTurmasSupabase = async () => {
+    if (!user?.empresa_id) return
+    const { count, error } = await supabase
+      .from('turma')
+      .select('*', { count: 'exact', head: true })
+      .eq('empresa_id', user.empresa_id)
+    if (!error && typeof count === 'number') {
+      setTotalTurmasSupabase(count)
+    }
+  }
   const { user, logout } = useAuth()
   const router = useRouter()
   const [alunos, setAlunos] = useState<Aluno[]>([])
+  const [alunosSupabase, setAlunosSupabase] = useState<any[]>([])
+  const [totalAlunos, setTotalAlunos] = useState<number>(0)
   const [filteredAlunos, setFilteredAlunos] = useState<Aluno[]>([])
+  const [transacoesSupabase, setTransacoesSupabase] = useState<any[]>([])
   const [turmas, setTurmas] = useState<Turma[]>([])
+  const fetchTransacoesSupabase = async () => {
+    if (!user?.empresa_id) return
+    const { data, error } = await supabase
+      .from('transacao')
+      .select('id, user_id, quantidade, motivo, tipo, created_at, user: user_id (nome)')
+      .eq('empresa_id', user.empresa_id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    if (!error && Array.isArray(data)) {
+      setTransacoesSupabase(data)
+    }
+  }
   const [transacoes, setTransacoes] = useState<Transacao[]>([])
   const [filteredTransacoes, setFilteredTransacoes] = useState<Transacao[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -75,19 +102,58 @@ export function AdminDashboard() {
   const [transacaoTurmaFilter, setTransacaoTurmaFilter] = useState("todas")
 
   // Estados para modais
+  const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null)
+  const [selectedTurma, setSelectedTurma] = useState<Turma | null>(null)
+
+  const fetchAlunosSupabase = async () => {
+    // Busca todos os alunos (role = 'student') na tabela user do Supabase
+    const { data, error } = await supabase
+      .from('user')
+      .select('id, nome, email, saldo_moedas')
+      .eq('role', 'student')
+    if (!error && Array.isArray(data)) {
+      setAlunosSupabase(data)
+    }
+  }
   const [showAlunoModal, setShowAlunoModal] = useState(false)
   const [showTurmaModal, setShowTurmaModal] = useState(false)
   const [showMoedasModal, setShowMoedasModal] = useState(false)
   const [showEditAlunoModal, setShowEditAlunoModal] = useState(false)
   const [showEditTurmaModal, setShowEditTurmaModal] = useState(false)
-  const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null)
-  const [selectedTurma, setSelectedTurma] = useState<Turma | null>(null)
 
   useEffect(() => {
-    if (user?.type === "admin") {
+    if (user?.role === "admin") {
       loadData()
+      fetchTotalAlunos()
+      fetchAlunosSupabase()
+      fetchTotalTransacoesSupabase()
+      fetchTransacoesSupabase()
+      fetchTotalTurmasSupabase()
     }
   }, [user])
+
+  const [totalTransacoesSupabase, setTotalTransacoesSupabase] = useState<number>(0)
+
+  const fetchTotalTransacoesSupabase = async () => {
+    if (!user?.empresa_id) return
+    const { count, error } = await supabase
+      .from('transacao')
+      .select('*', { count: 'exact', head: true })
+      .eq('empresa_id', user.empresa_id)
+    if (!error && typeof count === 'number') {
+      setTotalTransacoesSupabase(count)
+    }
+  }
+  const fetchTotalAlunos = async () => {
+    // Busca o total de alunos (role = 'student') na tabela user do Supabase
+    const { count, error } = await supabase
+      .from('user')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'student')
+    if (!error && typeof count === 'number') {
+      setTotalAlunos(count)
+    }
+  }
 
   useEffect(() => {
     filterAlunos()
@@ -153,6 +219,16 @@ export function AdminDashboard() {
             ...transacao,
             aluno_nome: aluno?.nome || "Aluno não encontrado",
           }
+  const fetchAlunosSupabase = async () => {
+    // Busca todos os alunos (role = 'student') na tabela user do Supabase
+    const { data, error } = await supabase
+      .from('user')
+      .select('id, nome, email, saldo_moedas, turma_id')
+      .eq('role', 'student')
+    if (!error && Array.isArray(data)) {
+      setAlunosSupabase(data)
+    }
+  }
         })
         .sort((a, b) => new Date(b.data_criacao).getTime() - new Date(a.data_criacao).getTime())
 
@@ -302,7 +378,7 @@ export function AdminDashboard() {
     )
   }
 
-  const totalMoedas = alunos.reduce((sum, aluno) => sum + aluno.saldo_moedas, 0)
+  const totalMoedas = alunosSupabase.reduce((sum, aluno) => sum + (aluno.saldo_moedas || 0), 0)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -310,10 +386,14 @@ export function AdminDashboard() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
+            <button
+              className="flex items-center focus:outline-none"
+              onClick={handleLogout}
+              title="Sair e voltar para tela inicial"
+            >
               <Coins className="h-8 w-8 text-red-600 mr-3" />
               <h1 className="text-xl font-semibold text-gray-900">CNA COIN</h1>
-            </div>
+            </button>
             <div className="flex items-center space-x-4">
               <div className="hidden md:block text-sm text-gray-600">Olá, {user?.nome}</div>
               <DropdownMenu>
@@ -343,7 +423,7 @@ export function AdminDashboard() {
               <Users className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{alunos.length}</div>
+              <div className="text-2xl font-bold">{totalAlunos}</div>
             </CardContent>
           </Card>
 
@@ -353,7 +433,7 @@ export function AdminDashboard() {
               <GraduationCap className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{turmas.length}</div>
+              <div className="text-2xl font-bold">{totalTurmasSupabase}</div>
             </CardContent>
           </Card>
 
@@ -373,7 +453,7 @@ export function AdminDashboard() {
               <TrendingUp className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{transacoes.length}</div>
+              <div className="text-2xl font-bold">{totalTransacoesSupabase}</div>
             </CardContent>
           </Card>
         </div>
@@ -426,7 +506,7 @@ export function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {alunos
+                  {alunosSupabase
                     .sort((a, b) => b.saldo_moedas - a.saldo_moedas)
                     .slice(0, 10)
                     .map((aluno, index) => (
@@ -447,7 +527,7 @@ export function AdminDashboard() {
                           </div>
                           <div>
                             <p className="font-medium">{aluno.nome}</p>
-                            <p className="text-sm text-gray-500">{aluno.username}</p>
+                            <p className="text-sm text-gray-500">{aluno.email}</p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -466,14 +546,14 @@ export function AdminDashboard() {
                 <CardDescription>Últimas movimentações de moedas</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {transacoes.slice(0, 10).map((transacao) => (
+                <div className="space-y-3">
+                  {transacoesSupabase.map((transacao) => (
                     <div key={transacao.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex-1">
-                        <p className="font-medium">{transacao.aluno_nome}</p>
+                        <p className="font-medium">{transacao.user?.nome || "Aluno"}</p>
                         <p className="text-sm text-gray-600">{transacao.motivo}</p>
                         <p className="text-xs text-gray-500">
-                          {new Date(transacao.data_criacao).toLocaleDateString("pt-BR")}
+                          {transacao.created_at ? new Date(transacao.created_at).toLocaleDateString("pt-BR") : ""}
                         </p>
                       </div>
                       <div className="text-right">
@@ -505,7 +585,7 @@ export function AdminDashboard() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
-                      placeholder="Buscar por nome ou @"
+                      placeholder="Buscar por nome ou email"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10 w-full sm:w-64"
@@ -576,50 +656,52 @@ export function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {filteredAlunos.map((aluno) => (
-                  <div key={aluno.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <div>
-                          <p className="font-medium">{aluno.nome}</p>
-                          <p className="text-sm text-gray-500">{aluno.username}</p>
-                          {aluno.turma_nome && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {aluno.turma_nome}
-                            </Badge>
-                          )}
+                {alunosSupabase
+                  .filter(
+                    (aluno) =>
+                      aluno.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      aluno.email.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((aluno) => (
+                    <div key={aluno.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <p className="font-medium">{aluno.nome}</p>
+                            <p className="text-sm text-gray-500">{aluno.email}</p>
+                            {/* Tag da turma mantida como está */}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="text-right">
-                        <p className="font-bold text-red-600">{aluno.saldo_moedas}</p>
-                        <p className="text-xs text-gray-500">coins</p>
+                      <div className="flex items-center space-x-2">
+                        <div className="text-right">
+                          <p className="font-bold text-red-600">{aluno.saldo_moedas}</p>
+                          <p className="text-xs text-gray-500">coins</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedAluno(aluno)
+                            setShowEditAlunoModal(true)
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-red-600 hover:bg-red-700"
+                          onClick={() => {
+                            setSelectedAluno(aluno)
+                            setShowMoedasModal(true)
+                          }}
+                        >
+                          <Coins className="h-4 w-4 mr-1" />
+                          Moedas
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedAluno(aluno)
-                          setShowEditAlunoModal(true)
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="bg-red-600 hover:bg-red-700"
-                        onClick={() => {
-                          setSelectedAluno(aluno)
-                          setShowMoedasModal(true)
-                        }}
-                      >
-                        <Coins className="h-4 w-4 mr-1" />
-                        Moedas
-                      </Button>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>
