@@ -11,9 +11,9 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      if (user.type === "aluno") {
+      if (user.role === "student") {
         router.push("/aluno/dashboard")
-      } else if (user.type === "admin") {
+      } else if (user.role === "admin") {
         router.push("/admin/dashboard")
       }
     }

@@ -8,6 +8,7 @@ interface AuthContextType {
   user: AuthUser | null
   login: (email: string, password: string) => Promise<void>
   logout: () => void
+  updateUser: (updatedUser: AuthUser) => void
   isLoading: boolean
 }
 
@@ -53,7 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("cna-coin-user")
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, isLoading }}>{children}</AuthContext.Provider>
+  const updateUser = (updatedUser: AuthUser) => {
+    setUser(updatedUser)
+    localStorage.setItem("cna-coin-user", JSON.stringify(updatedUser))
+  }
+
+  return <AuthContext.Provider value={{ user, login, logout, updateUser, isLoading }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

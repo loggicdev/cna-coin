@@ -10,7 +10,7 @@ export default function AlunoDashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && (!user || user.type !== "aluno")) {
+    if (!isLoading && (!user || user.role !== "student")) {
       router.push("/")
     }
   }, [user, isLoading, router])
@@ -26,7 +26,7 @@ export default function AlunoDashboardPage() {
     )
   }
 
-  if (!user || user.type !== "aluno") {
+  if (!user || user.role !== "student") {
     return null
   }
 
