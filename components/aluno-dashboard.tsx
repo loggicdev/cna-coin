@@ -66,6 +66,25 @@ export function AlunoDashboard() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
 
+  // Adicionar estado para nome da empresa
+  const [empresaNome, setEmpresaNome] = useState<string>("")
+
+  useEffect(() => {
+    async function fetchEmpresaNome() {
+      if (user?.empresa_id) {
+        const { data, error } = await supabase
+          .from('empresa')
+          .select('nome')
+          .eq('id', user.empresa_id)
+          .single()
+        if (!error && data) {
+          setEmpresaNome(data.nome)
+        }
+      }
+    }
+    fetchEmpresaNome()
+  }, [user])
+
   // Validação: só permite acesso se estiver logado e for student
   if (typeof window !== "undefined" && (!user || user.role !== "student")) {
     router.push("/")
@@ -296,9 +315,9 @@ export function AlunoDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Coins className="h-12 w-12 animate-spin mx-auto mb-4 text-red-600" />
-          <p>Carregando...</p>
+        <div className="text-center flex flex-col items-center justify-center">
+          <img src="/cna-logo.png" alt="Logo Empresa" className="w-24 h-24 animate-spin mb-4" />
+          <p className="text-lg text-red-700 font-bold">Carregando...</p>
         </div>
       </div>
     )
@@ -311,8 +330,8 @@ export function AlunoDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center cursor-pointer" onClick={handleLogout} title="Sair">
-              <Coins className="h-8 w-8 text-red-600 mr-3" />
-              <h1 className="text-xl font-semibold text-gray-900">CNA COIN</h1>
+              <img src="/cna-logo.png" alt="Logo Empresa" className="h-8 w-8 mr-3" />
+              <h1 className="text-xl font-semibold text-gray-900">{user?.empresa_nome || "Empresa"}</h1>
             </div>
             <div className="flex items-center space-x-4">
               <div className="hidden md:block text-sm text-gray-600">Olá, {user?.nome}</div>
@@ -375,7 +394,7 @@ export function AlunoDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Meus CNA Coins</CardTitle>
+              <CardTitle className="text-sm font-medium">Meus {user?.empresa_nome || "Empresa"} Coins</CardTitle>
               <Coins className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
@@ -398,9 +417,7 @@ export function AlunoDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Transações</CardTitle>
-              <div className="p-1 bg-purple-100 rounded-full">
-                <History className="h-4 w-4 text-purple-600" />
-              </div>
+              <History className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -442,7 +459,7 @@ export function AlunoDashboard() {
                     <Trophy className="h-5 w-5 text-yellow-500" />
                     Ranking Top 10
                   </CardTitle>
-                  <CardDescription>Alunos com mais CNA Coins</CardDescription>
+                  <CardDescription>Alunos com mais {user?.empresa_nome || "Empresa"} Coins</CardDescription>
                 </div>
                 <Select value={turmaFiltro} onValueChange={setTurmaFiltro}>
                   <SelectTrigger className="w-48 border-red-200 focus:border-red-500 focus:ring-red-500">
@@ -492,7 +509,6 @@ export function AlunoDashboard() {
                             {aluno.nome}
                             {aluno.id === user?.id && <span className="text-red-500 ml-1">(Você)</span>}
                           </p>
-                          <p className="text-sm text-gray-500">{aluno.username}</p>
                           {aluno.turma_nome && (
                             <Badge variant="outline" className="text-xs mt-1">
                               {aluno.turma_nome}
