@@ -190,6 +190,10 @@ export function AdminDashboard() {
   const [showDeleteTurmaModal, setShowDeleteTurmaModal] = useState(false)
   const [showDeleteAlunoModal, setShowDeleteAlunoModal] = useState(false)
   const [isCreatingAluno, setIsCreatingAluno] = useState(false)
+  
+  // Estados para controlar os selects dos modais
+  const [createAlunoTurmaId, setCreateAlunoTurmaId] = useState("none")
+  const [editAlunoTurmaId, setEditAlunoTurmaId] = useState("none")
 
   useEffect(() => {
     if (user?.role === "admin") {
@@ -918,7 +922,7 @@ export function AdminDashboard() {
                       <SelectItem value="menor-moeda">Menos moedas</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Dialog open={showAlunoModal} onOpenChange={(open) => {
+                  <Dialog open={showAlunoModal} onOpenChange={(open: boolean) => {
                     setShowAlunoModal(open)
                     if (!open) {
                       setIsCreatingAluno(false)
@@ -1013,6 +1017,7 @@ export function AdminDashboard() {
                           variant="outline"
                           onClick={() => {
                             setSelectedAluno(aluno)
+                            setEditAlunoTurmaId(aluno.turma_id || "none")
                             setShowEditAlunoModal(true)
                           }}
                         >
@@ -1282,7 +1287,13 @@ export function AdminDashboard() {
       </Dialog>
 
       {/* Modal para editar aluno */}
-      <Dialog open={showEditAlunoModal} onOpenChange={setShowEditAlunoModal}>
+      <Dialog open={showEditAlunoModal} onOpenChange={(open: boolean) => {
+        setShowEditAlunoModal(open)
+        if (!open) {
+          setSelectedAluno(null)
+          setEditAlunoTurmaId("none")
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Editar Aluno</DialogTitle>
