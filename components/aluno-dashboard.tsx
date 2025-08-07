@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/contexts/auth-context"
+import { getAlunos, getTurmas, getTransacoes, saveAlunos } from "@/lib/storage"
+import { getTurmaNome } from "@/lib/mock-data"
 import { Coins, Trophy, Users, History, LogOut, Menu, User, TrendingUp, TrendingDown } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -415,7 +417,9 @@ export function AlunoDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Transações</CardTitle>
-              <History className="h-4 w-4 text-purple-600" />
+              <div className="p-1 bg-purple-100 rounded-full">
+                <History className="h-4 w-4 text-purple-600" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -507,6 +511,7 @@ export function AlunoDashboard() {
                             {aluno.nome}
                             {aluno.id === user?.id && <span className="text-red-500 ml-1">(Você)</span>}
                           </p>
+                          <p className="text-sm text-gray-500">{aluno.username}</p>
                           {aluno.turma_nome && (
                             <Badge variant="outline" className="text-xs mt-1">
                               {aluno.turma_nome}
