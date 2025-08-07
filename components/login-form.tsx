@@ -23,7 +23,7 @@ export function LoginForm() {
     setError("")
 
     const formData = new FormData(e.currentTarget)
-    const email = formData.get("username") as string
+    const email = formData.get("email") as string
     const password = formData.get("senha") as string
 
     try {
@@ -35,66 +35,60 @@ export function LoginForm() {
       } else if (userRole === "admin") {
         router.push("/admin/dashboard")
       } else {
-        setError("Role de usuário inválida")
+        setError("") // Não exibe erro de role
       }
     } catch (err) {
-      setError("Username ou senha inválidos")
+      setError("E-mail ou senha inválidos")
     }
     setIsLoading(false)
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-red-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-red-600 p-3 rounded-full">
-              <Coins className="h-8 w-8 text-white" />
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center w-full h-full">
+          <img src="/cna-logo.png" alt="Logo CNA" className="w-24 h-24 animate-spin mb-4" />
+          <span className="text-lg text-red-700 font-bold">Carregando...</span>
+        </div>
+      ) : (
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <img src="/cna-logo.png" alt="Logo CNA" className="w-16 h-16 mx-auto" />
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold text-red-900">CNA COIN</CardTitle>
-          <CardDescription>Sistema de Moedas de Incentivo</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                name="username"
-                type="text"
-                placeholder="@seuusername"
-                className="focus:border-red-500 focus:ring-red-500"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="senha">Senha</Label>
-              <Input
-                id="senha"
-                name="senha"
-                type="password"
-                className="focus:border-red-500 focus:ring-red-500"
-                required
-              />
-            </div>
-            {error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
-            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isLoading}>
-              {isLoading ? "Entrando..." : "Entrar"}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Dados de teste:</p>
-            <p>
-              <strong>Aluno:</strong> @joao123 / password
-            </p>
-            <p>
-              <strong>Admin:</strong> @adminsp / password
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <CardTitle className="text-2xl font-bold text-red-900">CNA COIN</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  className="focus:border-red-500 focus:ring-red-500"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="senha">Senha</Label>
+                <Input
+                  id="senha"
+                  name="senha"
+                  type="password"
+                  className="focus:border-red-500 focus:ring-red-500"
+                  required
+                />
+              </div>
+              {error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
+              <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isLoading}>
+                Entrar
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
