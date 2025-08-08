@@ -72,14 +72,14 @@ export function AlunoDashboard() {
   useEffect(() => {
     async function fetchEmpresaNome() {
       if (user?.empresa_id) {
-        const { data, error } = await supabase
-          .from('empresa')
-          .select('nome')
-          .eq('id', user.empresa_id)
-          .single()
-        if (!error && data) {
-          setEmpresaNome(data.nome)
-        }
+          const { data, error } = await supabase
+            .from('empresas')
+            .select('nome')
+            .eq('id', user.empresa_id)
+            .single()
+          if (!error && data?.nome) {
+            setEmpresaNome(data.nome)
+          }
       }
     }
     fetchEmpresaNome()
@@ -329,7 +329,7 @@ export function AlunoDashboard() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center cursor-pointer" onClick={handleLogout} title="Sair">
+            <div className="flex items-center">
               <img src="/cna-logo.png" alt="Logo Empresa" className="h-8 w-8 mr-3" />
               <h1 className="text-xl font-semibold text-gray-900">{empresaNome || "Empresa"}</h1>
             </div>
@@ -393,36 +393,34 @@ export function AlunoDashboard() {
         {/* Cards de resumo */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Meus {empresaNome || "Empresa"} Coins</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 mb-0">
+              <CardTitle className="text-sm font-medium">CNA Coins</CardTitle>
               <Coins className="h-4 w-4 text-red-600" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0 -mt-2">
               <div className="text-2xl font-bold text-red-600">{user?.saldo_moedas ?? 0}</div>
               <p className="text-xs text-muted-foreground">Total de moedas</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 mb-0">
               <CardTitle className="text-sm font-medium">Minha Turma</CardTitle>
               <Users className="h-4 w-4 text-green-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{turmaNome || "Não definida"}</div>
+            <CardContent className="pt-0 -mt-2">
+              <div className="text-lg font-bold">{turmaNome || "Não definida"}</div>
               <p className="text-xs text-muted-foreground">Turma atual</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+           <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 mb-0">
               <CardTitle className="text-sm font-medium">Transações</CardTitle>
-              <div className="p-1 bg-purple-100 rounded-full">
-                <History className="h-4 w-4 text-purple-600" />
-              </div>
+              <History className="h-4 w-4 text-purple-600" />
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+            <CardContent className="pt-0 -mt-2">
+              <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-green-50 rounded-lg p-2 border border-green-100">
                     <div className="flex items-center justify-between">
@@ -455,27 +453,29 @@ export function AlunoDashboard() {
           {/* Ranking */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between flex-wrap gap-2 ranking-header">
+                <div className="ranking-title-section">
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-yellow-500" />
                     Ranking Top 10
                   </CardTitle>
-                  <CardDescription>Alunos com mais {empresaNome || "Empresa"} Coins</CardDescription>
+                  <CardDescription>Alunos com mais CNA Coins</CardDescription>
                 </div>
-                <Select value={turmaFiltro} onValueChange={setTurmaFiltro}>
-                  <SelectTrigger className="w-48 border-red-200 focus:border-red-500 focus:ring-red-500">
-                    <SelectValue placeholder="Filtrar por turma" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todas">Todas as turmas</SelectItem>
-                    {turmas.map((turma) => (
-                      <SelectItem key={turma.id} value={turma.id}>
-                        {turma.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="ranking-dropdown">
+                  <Select value={turmaFiltro} onValueChange={setTurmaFiltro}>
+                    <SelectTrigger className="w-48 border-red-200 focus:border-red-500 focus:ring-red-500">
+                      <SelectValue placeholder="Filtrar por turma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas as turmas</SelectItem>
+                      {turmas.map((turma) => (
+                        <SelectItem key={turma.id} value={turma.id}>
+                          {turma.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -513,8 +513,20 @@ export function AlunoDashboard() {
                           </p>
                           <p className="text-sm text-gray-500">{aluno.username}</p>
                           {aluno.turma_nome && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {aluno.turma_nome}
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs mt-1 py-0.5 px-2 leading-tight" 
+                              style={{ 
+                                display: 'inline-block',
+                                width: 'fit-content',
+                                maxWidth: '120px',
+                                whiteSpace: 'pre-line',
+                                wordBreak: 'break-word',
+                                textAlign: 'center',
+                                lineHeight: '1.1'
+                              }}
+                            >
+                              {aluno.turma_nome.replace(' ', '\n')}
                             </Badge>
                           )}
                         </div>
@@ -665,6 +677,28 @@ export function AlunoDashboard() {
           },
         }}
       />
+      
+      {/* CSS Responsivo para telas menores que 500px */}
+      <style jsx>{`
+        @media (max-width: 500px) {
+          .ranking-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 1rem !important;
+          }
+          .ranking-title-section {
+            width: 100%;
+            order: 1;
+          }
+          .ranking-dropdown {
+            width: 100%;
+            order: 2;
+          }
+          .ranking-dropdown .w-48 {
+            width: 100% !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
