@@ -31,7 +31,7 @@ import {
 } from "@/lib/storage"
 import { getTurmaNome } from "@/lib/mock-data"
 import { supabase } from "@/lib/supabase"
-import { Coins, Users, GraduationCap, Plus, LogOut, TrendingUp, Search, Edit, Menu, Trash2 } from "lucide-react"
+import { Coins, Users, GraduationCap, Plus, LogOut, TrendingUp, Search, Edit, Menu, Trash2, User } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { toast, Toaster } from "@/components/ui/hot-toast"
@@ -65,7 +65,7 @@ interface Transacao {
 
 export function AdminDashboard() {
   const [totalTurmasSupabase, setTotalTurmasSupabase] = useState<number>(0)
-  const [empresaNome, setEmpresaNome] = useState<string>("CNA COIN")
+  const [empresaNome, setEmpresaNome] = useState<string>("")
 
   const fetchTotalTurmasSupabase = async () => {
     if (!user?.empresa_id) return
@@ -81,12 +81,14 @@ export function AdminDashboard() {
   const fetchEmpresaNome = async () => {
     if (!user?.empresa_id) return
     const { data, error } = await supabase
-      .from('empresa')
+      .from('empresas')
       .select('nome')
       .eq('id', user.empresa_id)
       .single()
-    if (!error && data) {
+    if (!error && data?.nome) {
       setEmpresaNome(data.nome)
+    } else {
+      setEmpresaNome("CNA COIN")
     }
   }
   const { user, logout } = useAuth()
@@ -156,6 +158,7 @@ export function AdminDashboard() {
   const [filteredTransacoes, setFilteredTransacoes] = useState<Transacao[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("overview")
+  const [showMenu, setShowMenu] = useState(false)
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState("")
@@ -682,11 +685,7 @@ export function AdminDashboard() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <button
-              className="flex items-center focus:outline-none"
-              onClick={handleLogout}
-              title="Sair e voltar para tela inicial"
-            >
+            <div className="flex items-center">
               <Image 
                 src="/cna-logo.png" 
                 alt="Logo Empresa" 
@@ -694,23 +693,49 @@ export function AdminDashboard() {
                 height={32} 
                 className="mr-3" 
               />
-              <h1 className="text-xl font-semibold text-gray-900">{empresaNome}</h1>
-            </button>
+              <h1 className="text-xl font-semibold text-gray-900">{empresaNome || "CNA COIN"}</h1>
+            </div>
             <div className="flex items-center space-x-4">
               <div className="hidden md:block text-sm text-gray-600">Olá, {user?.nome}</div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sair
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="relative">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="relative hover:bg-gray-100"
+                  onClick={() => setShowMenu(!showMenu)}
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+                
+                {showMenu && (
+                  <>
+                    {/* Overlay para fechar o menu */}
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowMenu(false)}
+                    />
+                    {/* Menu dropdown */}
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <p className="text-sm font-medium text-gray-900">{user?.nome}</p>
+                        <p className="text-xs text-gray-500">{user?.email}</p>
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            handleLogout()
+                            setShowMenu(false)
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Sair
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -720,41 +745,41 @@ export function AdminDashboard() {
         {/* Cards de resumo */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 mb-0">
               <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
               <Users className="h-4 w-4 text-red-600" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0 -mt-2">
               <div className="text-2xl font-bold">{totalAlunos}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 mb-0">
               <CardTitle className="text-sm font-medium">Total de Turmas</CardTitle>
               <GraduationCap className="h-4 w-4 text-green-600" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0 -mt-2">
               <div className="text-2xl font-bold">{totalTurmasSupabase}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 mb-0">
               <CardTitle className="text-sm font-medium">Moedas em Circulação</CardTitle>
               <Coins className="h-4 w-4 text-yellow-600" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0 -mt-2">
               <div className="text-2xl font-bold">{totalMoedas}</div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 mb-0">
               <CardTitle className="text-sm font-medium">Transações</CardTitle>
               <TrendingUp className="h-4 w-4 text-purple-600" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0 -mt-2">
               <div className="text-2xl font-bold">{totalTransacoesSupabase}</div>
             </CardContent>
           </Card>
