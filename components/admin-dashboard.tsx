@@ -362,39 +362,24 @@ export function AdminDashboard() {
     const turmaId = formData.get("turma_id") as string;
     
     if (senha.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres (limite do Supabase Auth)");
+      toast.error("A senha deve ter pelo menos 6 caracteres");
       setIsCreatingAluno(false);
       return;
     }
     
     try {
-      // 1. Verificar se o email já existe na tabela user
-      const { data: existingUser, error: checkError } = await supabase
-        .from('user')
-        .select('email')
-        .eq('email', email)
-        .single()
-      
-      if (existingUser) {
-        throw new Error('Email já está em uso por outro usuário')
-      }
-
-      // 2. Criar usuário no Supabase Auth via MCP
-      const { data: userCreated, error: authError } = await supabase.auth.signUp({
+      // 1. Criar usuário no Supabase Auth
+      const { data: authUser, error: authError } = await supabase.auth.signUp({
         email,
-        password: senha,
-        options: {
-          emailRedirectTo: undefined // Evitar redirecionamento automático
-        }
+        password: senha
       });
       
       if (authError) throw authError;
-      const userId = userCreated.user?.id;
-      if (!userId) throw new Error("Falha ao criar usuário no Auth");
+      if (!authUser.user?.id) throw new Error("Falha ao criar usuário");
 
-      // 3. Inserir registro do aluno na tabela 'user' com saldo inicial 0
+      // 2. Inserir na tabela user
       const { error: dbError } = await supabase.from("user").insert({
-        id: userId,
+        id: authUser.user.id,
         email,
         nome,
         turma_id: turmaId === "none" ? null : turmaId,
@@ -403,49 +388,21 @@ export function AdminDashboard() {
         role: 'student',
       });
       
-      if (dbError) {
-        // Se falhar ao inserir na tabela user, tentar limpar o usuário do Auth
-        console.error('Erro ao inserir na tabela user:', dbError)
-        throw new Error('Erro ao criar perfil do usuário')
-      }
+      if (dbError) throw dbError;
 
-      // 4. Confirmar email automaticamente para permitir login
-      try {
-        const { error: confirmError } = await supabase.rpc('auto_confirm_user_email', {
-          user_id: userId
-        });
-        if (confirmError) {
-          console.log('Aviso: Email não confirmado automaticamente:', confirmError);
-        }
-      } catch (confirmError) {
-        // Não é crítico se falhar, mas logar para debugging
-        console.log('Aviso: Email não confirmado automaticamente');
-      }
-
-      // 5. Fechar modal e recarregar dados
+      // 3. Fechar modal e recarregar dados
       setShowAlunoModal(false);
       await fetchTurmasComAlunos();
       await fetchTotalAlunos();
       
-      toast.success(`Aluno ${nome} criado com sucesso! Email: ${email} - Login disponível imediatamente`, {
-        duration: 5000,
-      });
+      toast.success(`Aluno ${nome} criado com sucesso!`);
     } catch (error: any) {
       console.error("Erro ao criar aluno:", error);
-      const errorMessage = error.message || error.error_description || "Erro desconhecido";
       
-      if (errorMessage.includes('User already registered')) {
-        toast.error("Email já possui conta. Este email já possui uma conta. Escolha outro email.", {
-          duration: 4000,
-        });
-      } else if (errorMessage.includes('Email já está em uso')) {
-        toast.error("Email em uso. Este email já está em uso por outro usuário.", {
-          duration: 4000,
-        });
+      if (error.message?.includes('User already registered')) {
+        toast.error("Este email já possui uma conta. Escolha outro email.");
       } else {
-        toast.error(`Erro ao criar aluno. ${errorMessage.length > 100 ? "Erro interno do sistema. Tente novamente." : errorMessage}`, {
-          duration: 4000,
-        });
+        toast.error(`Erro ao criar aluno: ${error.message || 'Erro desconhecido'}`);
       }
     } finally {
       setIsCreatingAluno(false);
