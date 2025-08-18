@@ -1,7 +1,7 @@
 // ...existing code...
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,7 @@ import {
 } from "@/lib/storage"
 import { getTurmaNome } from "@/lib/mock-data"
 import { supabase } from "@/lib/supabase"
+import { deleteUserCompletely, createUserAsAdmin } from "@/lib/admin-operations"
 import { Coins, Users, GraduationCap, Plus, LogOut, TrendingUp, Search, Edit, Menu, Trash2, User } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -81,7 +82,7 @@ export function AdminDashboard() {
   const fetchEmpresaNome = async () => {
     if (!user?.empresa_id) return
     const { data, error } = await supabase
-      .from('empresas')
+      .from('empresa')
       .select('nome')
       .eq('id', user.empresa_id)
       .single()
@@ -361,6 +362,8 @@ export function AdminDashboard() {
     const senha = formData.get("senha") as string;
     const turmaId = formData.get("turma_id") as string;
     
+    console.log('Dados do formulário:', { email, nome, senha: '***', turmaId });
+    
     if (senha.length < 6) {
       toast.error("A senha deve ter pelo menos 6 caracteres");
       setIsCreatingAluno(false);
@@ -368,42 +371,32 @@ export function AdminDashboard() {
     }
     
     try {
-      // 1. Criar usuário no Supabase Auth
-      const { data: authUser, error: authError } = await supabase.auth.signUp({
+      // Usar a função administrativa para criar usuário
+      const result = await createUserAsAdmin({
         email,
-        password: senha
-      });
-      
-      if (authError) throw authError;
-      if (!authUser.user?.id) throw new Error("Falha ao criar usuário");
-
-      // 2. Inserir na tabela user
-      const { error: dbError } = await supabase.from("user").insert({
-        id: authUser.user.id,
-        email,
+        password: senha,
         nome,
-        turma_id: turmaId === "none" ? null : turmaId,
-        saldo_moedas: 0,
-        empresa_id: user!.empresa_id,
-        role: 'student',
+        turmaId: turmaId === "none" ? undefined : turmaId,
+        empresaId: user!.empresa_id
       });
-      
-      if (dbError) throw dbError;
 
-      // 3. Fechar modal e recarregar dados
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao criar usuário');
+      }
+
+      console.log('Usuário criado com ID:', result.userId);
+
+      // Fechar modal e recarregar dados
       setShowAlunoModal(false);
+      setCreateAlunoTurmaId("none");
       await fetchTurmasComAlunos();
       await fetchTotalAlunos();
       
       toast.success(`Aluno ${nome} criado com sucesso!`);
     } catch (error: any) {
-      console.error("Erro ao criar aluno:", error);
-      
-      if (error.message?.includes('User already registered')) {
-        toast.error("Este email já possui uma conta. Escolha outro email.");
-      } else {
-        toast.error(`Erro ao criar aluno: ${error.message || 'Erro desconhecido'}`);
-      }
+      console.error("Erro completo ao criar aluno:", error);
+      const errorMessage = error.message || error.error_description || "Erro desconhecido";
+      toast.error(`Erro ao criar aluno: ${errorMessage}`);
     } finally {
       setIsCreatingAluno(false);
     }
@@ -535,20 +528,19 @@ export function AdminDashboard() {
     if (!selectedAluno) return
 
     try {
-      // Excluir o aluno do Supabase
-      const { error: deleteError } = await supabase
-        .from('user')
-        .delete()
-        .eq('id', selectedAluno.id)
+      // Usar a função administrativa para deletar completamente
+      const result = await deleteUserCompletely(selectedAluno.id);
       
-      if (deleteError) throw deleteError
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao deletar usuário');
+      }
       
       setShowDeleteAlunoModal(false)
       setSelectedAluno(null)
       await fetchTurmasComAlunos()
       await fetchTotalAlunos()
       
-      toast.success("Aluno excluído com sucesso!", {
+      toast.success("Aluno e autenticação excluídos com sucesso!", {
         duration: 3000,
       });
     } catch (error) {
@@ -621,6 +613,33 @@ export function AdminDashboard() {
     logout()
     router.push("/")
   }
+  const totalMoedas = alunosSupabase.reduce((sum, aluno) => sum + (aluno.saldo_moedas || 0), 0)
+
+  const topRecebedores = useMemo(() => {
+    const map: Record<string, { total: number }> = {}
+    transacoesSupabase.forEach((t) => {
+      if (t.tipo === 'entrada') {
+        const uid = t.user_id
+        const qtd = Number(t.quantidade) || 0
+        if (!map[uid]) map[uid] = { total: 0 }
+        map[uid].total += qtd
+      }
+    })
+
+    const arr = Object.keys(map).map((uid) => {
+      const aluno = alunosSupabase.find((a) => a.id === uid) || { id: uid, nome: transacoesSupabase.find((x) => x.user_id === uid)?.user?.nome || 'Aluno', email: '' }
+      return {
+        id: uid,
+        nome: aluno.nome,
+        email: aluno.email || '',
+        totalReceived: map[uid].total,
+        saldo_moedas: aluno.saldo_moedas || 0,
+      }
+    })
+
+    arr.sort((a, b) => b.totalReceived - a.totalReceived)
+    return arr.slice(0, 10)
+  }, [transacoesSupabase, alunosSupabase])
 
   if (isLoading) {
     return (
@@ -632,8 +651,6 @@ export function AdminDashboard() {
       </div>
     )
   }
-
-  const totalMoedas = alunosSupabase.reduce((sum, aluno) => sum + (aluno.saldo_moedas || 0), 0)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -784,16 +801,16 @@ export function AdminDashboard() {
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="h-full flex flex-col">
-              <CardHeader>
-                <CardTitle>Top 10 Alunos</CardTitle>
-                <CardDescription>Alunos com mais {empresaNome} Coins</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {alunosSupabase
-                    .sort((a, b) => b.saldo_moedas - a.saldo_moedas)
-                    .slice(0, 10)
-                    .map((aluno, index) => (
+                <CardHeader>
+                  <CardTitle>Top 10 Alunos</CardTitle>
+                  <CardDescription>Alunos que mais receberam CNA Coins</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {
+                      // calcular top por soma das transações do tipo 'entrada'
+                    }
+                    {topRecebedores.map((aluno, index) => (
                       <div key={aluno.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-3">
                           <div
@@ -815,13 +832,13 @@ export function AdminDashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-red-600">{aluno.saldo_moedas}</p>
-                          <p className="text-xs text-gray-500">coins</p>
+                          <p className="font-bold text-red-600">{aluno.totalReceived}</p>
+                          <p className="text-xs text-gray-500">coins recebidos</p>
                         </div>
                       </div>
                     ))}
-                </div>
-              </CardContent>
+                  </div>
+                </CardContent>
             </Card>
 
             <Card className="h-full flex flex-col">
@@ -1374,7 +1391,7 @@ export function AdminDashboard() {
               Tem certeza que deseja excluir o aluno "{selectedAluno?.nome}"?
               <br />
               <span className="text-red-600 font-medium">
-                Esta ação não pode ser desfeita. O aluno e todas as suas transações serão mantidas no histórico.
+                Esta ação não pode ser desfeita. O aluno, sua autenticação e todas as suas transações serão removidos permanentemente.
               </span>
             </DialogDescription>
           </DialogHeader>
