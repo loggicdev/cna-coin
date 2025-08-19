@@ -19,7 +19,7 @@ export function useAsyncAction<T extends any[] = any[]>(options?: {
       setLoading(true)
       try {
         const res = await fn(...args)
-        if (options?.successMessage) toast.success(options?.successMessage)
+        if (options?.successMessage) toast.success(options.successMessage)
         return res
       } catch (err: any) {
         const key = err?.message || "UNKNOWN_ERROR"
